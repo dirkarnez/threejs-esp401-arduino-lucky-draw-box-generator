@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" href="https://threejs.org/files/main.css">
+		<style>
+			canvas {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			#newWindow {
+				display: block;
+				position: absolute;
+				bottom: 0.3em;
+				left: 0.5em;
+				color: #fff;
+			}
+		</style>
+
+<!-- Or by plain js https://medium.com/@necsoft/three-js-101-hello-world-part-1-443207b1ebe1 -->
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+				"three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/",
+				"three-csg-ts": "https://cdn.jsdelivr.net/npm/three-csg-ts@3.2.0/+esm"
+			}
+		}
+	</script>
+</head>
+
+<body>
+	<!-- <script>
+		(() => {
+			fetch("./three-csg-ts.3.2.0.min.js")
+			.then(data => data.text())
+			.then(jsCode => {
+				eval(jsCode);
+				window.threeCSGTypeScript = threeCSGTypeScript;
+				console.log(threeCSGTypeScript)
+				// threeCSGTypeScript
+			})
+		})();
+	</script> -->
+	<script type="module">
+		import * as THREE from 'three';
+		
+		import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+		import { CSG } from "three-csg-ts";
+
+		debugger;
+		// or
+		//   import { OrbitControls } from 'https://unpkg.com/three@0.163.0/examples/jsm/controls/OrbitControls.js'
+		
+		// ------------------------------------------------
+		// BASIC SETUP
+		// ------------------------------------------------
+
+		
+		const exporter = new STLExporter();
+
+		// Create an empty scene
+		var scene = new THREE.Scene();
+		scene.background = new THREE.Color( 0x444444 );
+		
+		// Create a basic perspective camera
+		var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+		camera.position.z = 30;
+
+		// Create a renderer with Antialiasing
+		var renderer = new THREE.WebGLRenderer({ antialias: true });
+		renderer.setPixelRatio( window.devicePixelRatio );
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+
+		const orbit = new OrbitControls( camera, renderer.domElement );
+		orbit.enableZoom = true;
+
+		const lights = [];
+		lights[ 0 ] = new THREE.DirectionalLight( 0xffffff, 3 );
+		lights[ 1 ] = new THREE.DirectionalLight( 0xffffff, 3 );
+		lights[ 2 ] = new THREE.DirectionalLight( 0xffffff, 3 );
+
+		lights[ 0 ].position.set( 0, 200, 0 );
+		lights[ 1 ].position.set( 100, 200, 100 );
+		lights[ 2 ].position.set( - 100, - 200, - 100 );
+
+		scene.add( lights[ 0 ] );
+		scene.add( lights[ 1 ] );
+		scene.add( lights[ 2 ] );
+
+		// size means how long per line (unit)
+		// divisions means how many boxes per line
+		// therefore, both must have same value if GridHelper is intended to use as a ruler
+		const size = 10000, divisions = 10000;
+
+		const gridHelper = new THREE.GridHelper( size, divisions, 0xFFFFFF, 0x222222 );
+		scene.add(gridHelper);
+		
+		const group = new THREE.Group();
+
+		const geometry = new THREE.BufferGeometry();
+		geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( [], 3 ) );
+
+		const lineMaterial = new THREE.LineBasicMaterial( { color: 0xffffff, transparent: true, opacity: 0.5 } );
+		const meshMaterial = new THREE.MeshPhongMaterial( { color: 0x156289, emissive: 0x072534, side: THREE.DoubleSide, flatShading: true } );
+
+		group.add( new THREE.LineSegments( geometry, lineMaterial ) );
+		group.add( new THREE.Mesh( geometry, meshMaterial ) );
+
+		const data = {
+			width: 20,
+			height: 2,
+			depth: 34
+		};
+
+		function exportASCII() {
+			const result = exporter.parse( group );
+			saveString( result, 'box.stl' );
+		}
+
+		function exportBinary() {
+			const result = exporter.parse( group, { binary: true } );
+			saveArrayBuffer( result, 'box.stl' );
+		}
+
+		const link = document.createElement( 'a' );
+		link.style.display = 'none';
+		document.body.appendChild( link );
+
+		function save( blob, filename ) {
+			link.href = URL.createObjectURL( blob );
+			link.download = filename;
+			link.click();
+		}
+
+		function saveString( text, filename ) {
+			save( new Blob( [ text ], { type: 'text/plain' } ), filename );
+		}
+
+		function saveArrayBuffer( buffer, filename ) {
+			save( new Blob( [ buffer ], { type: 'application/octet-stream' } ), filename );
+		}
+
+		const params = {
+			exportASCII: exportASCII,
+			exportBinary: exportBinary
+		};
+		
+		// group.children[ 0 ].geometry.dispose();
+		// group.children[ 1 ].geometry.dispose();
+
+
+
+		const boxGeometry = new THREE.BoxGeometry(data.width, data.height, data.depth);
+		
+		group.children[ 0 ].geometry = new THREE.WireframeGeometry( boxGeometry );
+		group.children[ 1 ].geometry = boxGeometry;
+
+
+		// group.attach(new THREE.Mesh( new THREE.BoxGeometry( 1, 1, 1 ), meshMaterial ))
+	
+		scene.add(group);
+
+
+
+
+		const box = new THREE.Mesh(
+			new THREE.BoxGeometry(2, 2, 2),
+			new THREE.MeshNormalMaterial()
+		);
+		const sphere = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8));
+
+		// Make sure the .matrix of each mesh is current
+		box.updateMatrix();
+		sphere.updateMatrix();
+
+		scene.add(CSG.subtract(box, sphere));
+
+		const shape = new THREE.Shape();
+		const x = -2.5;
+		const y = -5;
+		shape.moveTo(x + 2.5, y + 2.5);
+		shape.bezierCurveTo(x + 2.5, y + 2.5, x + 2, y, x, y);
+		shape.bezierCurveTo(x - 3, y, x - 3, y + 3.5, x - 3, y + 3.5);
+		shape.bezierCurveTo(x - 3, y + 5.5, x - 1.5, y + 7.7, x + 2.5, y + 9.5);
+		shape.bezierCurveTo(x + 6, y + 7.7, x + 8, y + 4.5, x + 8, y + 3.5);
+		shape.bezierCurveTo(x + 8, y + 3.5, x + 8, y, x + 5, y);
+		shape.bezierCurveTo(x + 3.5, y, x + 2.5, y + 2.5, x + 2.5, y + 2.5);
+
+		const extrudeSettings = {
+			steps:   1,  
+			depth:  6.3,  
+			bevelEnabled: true,  
+			bevelThickness: 1.43,  
+			bevelSize: 2.04,  
+			bevelSegments: 8,  
+		};
+
+		scene.add(new THREE.Mesh(
+			new THREE.ExtrudeGeometry(shape, extrudeSettings),
+			new THREE.MeshNormalMaterial()
+		));
+
+
+		// // Add cube to Scene
+
+		// Render Loop
+		var render = function () {
+			requestAnimationFrame(render);
+			
+			// group.rotation.x += 0.005;
+			// group.rotation.y += 0.005;
+
+			// Render the scene
+			renderer.render(scene, camera);
+		};
+
+		render();
+		
+
+		window.addEventListener( 'resize', function () {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize( window.innerWidth, window.innerHeight );
+		}, false );
+
+		const gui = new GUI();
+		const pcbFolder = gui.addFolder( 'PCB' );
+		pcbFolder.add( data, 'width').onChange( generateGeometry );
+		pcbFolder.add( data, 'height').onChange( generateGeometry );
+		pcbFolder.add( data, 'depth').onChange( generateGeometry );
+
+		const exportFolder = gui.addFolder( 'Export' );
+		exportFolder.add( params, 'exportASCII' ).name( 'Export STL (ASCII)' );
+		exportFolder.add( params, 'exportBinary' ).name( 'Export STL (Binary)' );
+
+		function generateGeometry() {
+			updateGroupGeometry( group, new THREE.BoxGeometry(data.width, data.height, data.depth, data.widthSegments, data.heightSegments, data.depthSegments));
+		}
+		
+		
+		function updateGroupGeometry( mesh, geometry ) {
+			mesh.children[ 0 ].geometry.dispose();
+			mesh.children[ 1 ].geometry.dispose();
+
+			mesh.children[ 0 ].geometry = new THREE.WireframeGeometry( geometry );
+			mesh.children[ 1 ].geometry = geometry;
+			// these do not update nicely together if shared
+		}
+	</script>
+</body>
+</html>
