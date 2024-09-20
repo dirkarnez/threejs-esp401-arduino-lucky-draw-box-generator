@@ -12,3 +12,6 @@
 ### Meshes
 - https://www.thingiverse.com/thing:4725072
 - https://www.thingiverse.com/thing:994827
+
+### Notes
+- 26mm or slightly smaller [dirkarnez/cadquery-threads-playground](https://github.com/dirkarnez/cadquery-threads-playground)
